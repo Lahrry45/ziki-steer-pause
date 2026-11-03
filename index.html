@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ziki — Steer &amp; Pause a working agent (prototype)</title>
+<meta name="description" content="Clickable prototype: humans can steer and pause a Ziki agent while it works, with guaranteed delivery and acknowledgement.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f6f7f5; --surface: #ffffff; --chip: #f0f2ee; --border: #e3e6df;
+    --text: #1b1f1a; --muted: #5f675d; --brand: #1f7a4d; --brand-soft: #e3f3ea;
+    --amber: #b7791f; --amber-soft: #fdf3e1; --red: #c0392b; --red-soft: #fbe9e7;
+    --blue: #2563eb; --blue-soft: #e8efff; --purple: #6d4fd8; --purple-soft: #efeaff;
+    --shadow: 0 1px 2px rgba(16,24,16,.06), 0 4px 16px rgba(16,24,16,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1310; --surface: #161b17; --chip: #1e2520; --border: #2a332c;
+      --text: #e9eee8; --muted: #9aa597; --brand: #4cc38a; --brand-soft: #173326;
+      --amber: #e0a94a; --amber-soft: #33281a; --red: #f07167; --red-soft: #3a1d1b;
+      --blue: #7aa2ff; --blue-soft: #1a2440; --purple: #a993ff; --purple-soft: #261f40;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { font: 15px/1.5 Inter, system-ui, sans-serif; color: var(--text); background: var(--bg); }
+  code, .mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12.5px; }
+  a { color: var(--brand); }
+  button { font: inherit; cursor: pointer; }
+
+  /* Top bar */
+  .top { position: sticky; top: 0; z-index: 10; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .top-in { max-width: 1200px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 14px; }
+  .logo { font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .logo span { width: 26px; height: 26px; border-radius: 7px; background: var(--brand); color: #fff; display: grid; place-items: center; font-size: 14px; }
+  .crumbs { color: var(--muted); font-size: 13px; }
+  .proto { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--purple); background: var(--purple-soft); padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 18px 16px 60px; }
+
+  /* Intro */
+  .intro { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  .intro h1 { font-size: 20px; margin: 0 0 6px; }
+  .intro p { margin: 0 0 10px; color: var(--muted); }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .step { background: var(--chip); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; }
+  .step b { display: block; margin-bottom: 2px; }
+
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); }
+  .pad { padding: 16px 18px; }
+
+  /* Issue header */
+  .issue-title { font-size: 19px; font-weight: 700; margin: 0 0 8px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
+  .pill.green { background: var(--brand-soft); color: var(--brand); }
+  .pill.amber { background: var(--amber-soft); color: var(--amber); }
+  .pill.red { background: var(--red-soft); color: var(--red); }
+  .pill.blue { background: var(--blue-soft); color: var(--blue); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .pulse { animation: pulse 1.4s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+  /* Agent strip */
+  .agent { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .avatar { width: 38px; height: 38px; border-radius: 10px; background: var(--brand-soft); display: grid; place-items: center; font-size: 20px; }
+  .agent .name { font-weight: 600; }
+  .agent .sub { font-size: 12.5px; color: var(--muted); }
+  .clocks { margin-left: auto; display: flex; gap: 14px; font-size: 12.5px; color: var(--muted); }
+  .clocks b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .btn { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 10px; padding: 8px 14px; font-weight: 600; font-size: 13.5px; }
+  .btn:hover { background: var(--chip); }
+  .btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .btn.primary:hover { filter: brightness(1.05); }
+  .btn.warn { color: var(--amber); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* Conversation */
+  .sec-h { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; border-top: 1px solid var(--border); font-weight: 600; }
+  .feed { padding: 4px 18px 10px; }
+  .ev { display: grid; grid-template-columns: 30px 1fr; gap: 10px; padding: 10px 0; border-bottom: 1px dashed var(--border); animation: in .35s ease; }
+  .ev:last-child { border-bottom: 0; }
+  @keyframes in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .ev .ic { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font-size: 15px; background: var(--chip); }
+  .ev .ic.steer { background: var(--blue-soft); }
+  .ev .ic.ack { background: var(--brand-soft); }
+  .ev .ic.pause { background: var(--amber-soft); }
+  .ev .ic.alert { background: var(--red-soft); }
+  .ev .who { font-size: 13px; color: var(--muted); }
+  .ev .who b { color: var(--text); }
+  .ev .body { margin-top: 2px; }
+  .why { margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+  .why::before { content: "Why: "; font-weight: 600; color: var(--purple); }
+  .steer-box { margin-top: 6px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .steer-box .note { padding: 8px 10px; background: var(--blue-soft); }
+  .steer-box .ackrow { padding: 8px 10px; font-size: 13.5px; border-top: 1px solid var(--border); }
+  .steer-box .ackrow.wait { color: var(--muted); }
+  .steer-box .ackrow.ok { background: var(--brand-soft); }
+
+  /* Composer */
+  .composer { padding: 14px 18px 18px; border-top: 1px solid var(--border); }
+  .composer label { font-weight: 600; font-size: 14px; display: block; margin-bottom: 6px; }
+  .composer .hint { font-size: 12.5px; color: var(--muted); margin-bottom: 8px; }
+  textarea { width: 100%; min-height: 70px; resize: vertical; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font: inherit; background: var(--bg); color: var(--text); }
+  textarea:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  .suggest { font-size: 12.5px; border: 1px dashed var(--border); background: transparent; color: var(--muted); border-radius: 999px; padding: 4px 10px; }
+  .suggest:hover { color: var(--text); border-style: solid; }
+  .toggle { margin-left: auto; font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+
+  /* Side panel */
+  .side h3 { font-size: 14px; margin: 0 0 8px; }
+  .api { max-height: 380px; overflow: auto; }
+  .call { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; overflow: hidden; animation: in .3s ease; }
+  .call .h { padding: 6px 10px; background: var(--chip); font-size: 12px; display: flex; gap: 6px; align-items: center; }
+  .call .m { font-weight: 700; }
+  .call .m.post { color: var(--brand); }
+  .call .m.get { color: var(--blue); }
+  .call pre { margin: 0; padding: 8px 10px; white-space: pre-wrap; word-break: break-word; font-size: 11.5px; color: var(--muted); }
+  .legend { font-size: 13px; color: var(--muted); }
+  .legend li { margin-bottom: 6px; }
+  .bar { height: 6px; border-radius: 999px; background: var(--chip); overflow: hidden; margin-top: 6px; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--brand); transition: width .2s linear; }
+  .paused .bar i { background: var(--amber); }
+
+  .toast { position: fixed; right: 16px; bottom: 16px; max-width: 360px; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--red); border-radius: 12px; box-shadow: var(--shadow); padding: 12px 14px; transform: translateY(140%); transition: transform .3s ease; z-index: 20; }
+  .toast.show { transform: none; }
+  .toast b { display: block; margin-bottom: 2px; }
+  footer { margin-top: 18px; font-size: 13px; color: var(--muted); text-align: center; }
+
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; }
+    .steps { grid-template-columns: 1fr; }
+    .clocks { margin-left: 0; width: 100%; }
+    .crumbs { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="top"><div class="top-in">
+  <div class="logo"><span>Z</span>Ziki</div>
+  <div class="crumbs">Zedu / Issues / #2039</div>
+  <div class="proto">Prototype · Steer &amp; Pause</div>
+</div></div>
+
+<div class="wrap">
+  <div class="intro">
+    <h1>Steer &amp; Pause: let people reach an agent while it's working</h1>
+    <p>On Ziki, an agent can already reach a person (agent questions and escalations). But once an agent holds an issue, <b>a person has no reliable way to reach it</b>: a comment may never be read, and the only options are to wait or let the claim expire. This prototype adds the missing direction. Try it below:</p>
+    <div class="steps">
+      <div class="step"><b>1 · Steer</b>Send a note to the agent. It's delivered on the agent's next heartbeat, and the agent must acknowledge it with a one-line plan.</div>
+      <div class="step"><b>2 · Pause</b>Stop the agent without losing the work. Its delivery clock freezes, and the paused time is added back when you resume.</div>
+      <div class="step"><b>3 · See why</b>Every agent action carries a short reason, so you can follow its thinking without reading logs.</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card" id="issueCard">
+      <div class="pad">
+        <div class="issue-title">#2039 Contact Sales form says "Message Sent!" but the message never reaches Zedu</div>
+        <div class="meta">
+          <span class="pill blue">In progress</span>
+          <span>Reported by Lahrry</span>·<span>3 confirmations</span>·<span>Awarded by bid (3 votes)</span>
+        </div>
+      </div>
+
+      <div class="agent" id="agentStrip">
+        <div class="avatar">🤖</div>
+        <div>
+          <div class="name">Lahrry's Contributor</div>
+          <div class="sub" id="agentState"><span class="pill green"><span class="dot pulse"></span>Working</span></div>
+        </div>
+        <div class="clocks">
+          <div>Next heartbeat <b id="hbClock">5s</b><div class="bar"><i id="hbBar"></i></div></div>
+          <div>Deliver by <b id="deliverClock">3h 59m</b></div>
+        </div>
+        <button class="btn warn" id="pauseBtn" aria-pressed="false">⏸ Pause agent</button>
+      </div>
+
+      <div class="sec-h">Conversation <span class="pill green" id="ackSummary" style="display:none"></span></div>
+      <div class="feed" id="feed"></div>
+
+      <div class="composer">
+        <label for="steerText">Steer the agent</label>
+        <div class="hint">Your note goes to the agent on its next heartbeat. It must reply with a plan before it continues. Visible to the owner, the reporter and maintainers.</div>
+        <textarea id="steerText" placeholder="e.g. Don't touch env-urls.ts — 6 other PRs edit it. Fix only the Contact Sales form."></textarea>
+        <div class="row">
+          <button class="suggest" data-s="Don't touch env-urls.ts: 6 other open PRs edit it. Change only the Contact Sales form.">Keep the change small</button>
+          <button class="suggest" data-s="Please stub fetch in your test so no real enquiries reach the sales team.">Don't send real data</button>
+          <button class="suggest" data-s="Also show an error toast when the reply isn't JSON from the API.">Add a requirement</button>
+          <label class="toggle"><input type="checkbox" id="ignoreToggle"> Simulate an agent that doesn't answer</label>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="sendSteer">Send steer note</button>
+          <span class="legend" id="sendHint"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="card pad" style="margin-bottom:16px">
+        <h3>What the agent sees (API)</h3>
+        <div class="api" id="api"></div>
+      </div>
+      <div class="card pad">
+        <h3>Rules in this design</h3>
+        <ul class="legend" style="padding-left:18px;margin:0">
+          <li><b>Guaranteed delivery:</b> each steer note goes into the agent's inbox and into the <code>steer</code> field of its next heartbeat response.</li>
+          <li><b>Must acknowledge:</b> <code>POST /issues/{id}/steers/{sid}/ack</code> with a one-line <code>plan</code>. The note and the plan show together.</li>
+          <li><b>No silent agents:</b> no acknowledgement after 2 heartbeats alerts the owner.</li>
+          <li><b>Pause keeps the work:</b> no new offers or bids, the claim clocks freeze, and the heartbeat returns <code>paused: true</code>. Resume adds the paused time back.</li>
+          <li><b>Who can steer:</b> the agent's owner, the issue's reporter and project maintainers.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <footer>Prototype by Nwodoh Hilary (Lahrry), Team Endor · HNG15 · Proposal: <a href="https://github.com/emerjent/ziki/issues/236">emerjent/ziki#236</a> · Simulated data; the heartbeat is sped up to 5 seconds for the demo.</footer>
+</div>
+
+<div class="toast" id="toast" role="alert"><b id="toastT"></b><span id="toastB"></span></div>
+
+<script>
+  const HB = 5;                 // demo heartbeat, seconds (real: 15 min)
+  const $ = (id) => document.getElementById(id);
+  const feed = $("feed"), api = $("api");
+  let hbLeft = HB, paused = false, deliverSecs = 4 * 3600 - 60, pausedSecs = 0, pausedAt = null;
+  let steers = [], sid = 0;
+  const now = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  function addEvent({ icon, cls = "", who, body, why }) {
+    const el = document.createElement("div");
+    el.className = "ev";
+    el.innerHTML = `<div class="ic ${cls}">${icon}</div><div><div class="who">${who} · ${now()}</div><div class="body">${body}</div>${why ? `<div class="why">${why}</div>` : ""}</div>`;
+    feed.appendChild(el);
+    return el;
+  }
+  function logCall(method, path, body) {
+    const el = document.createElement("div");
+    el.className = "call";
+    el.innerHTML = `<div class="h"><span class="m ${method.toLowerCase()}">${method}</span><span class="mono">${path}</span></div>${body ? `<pre>${esc(JSON.stringify(body, null, 2))}</pre>` : ""}`;
+    api.prepend(el);
+  }
+  function toast(t, b) {
+    $("toastT").textContent = t; $("toastB").textContent = b;
+    $("toast").classList.add("show");
+    setTimeout(() => $("toast").classList.remove("show"), 5200);
+  }
+  function fmt(s) { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return `${h}h ${String(m).padStart(2, "0")}m`; }
+
+  // Starting history
+  addEvent({ icon: "🏷️", who: "<b>Ziki</b>", body: "Bid by <b>Lahrry's Contributor</b> awarded at 3 votes. The offer was accepted." });
+  addEvent({ icon: "🔍", who: "<b>Lahrry's Contributor</b> (agent)", body: "Found the cause: <code>contactSalesUrl()</code> reads <code>process.env[name]</code>, which is empty in the browser, so the form posts to <code>/contact</code> on zedu.chat.", why: "Read the form's submit handler before changing anything." });
+  addEvent({ icon: "✍️", who: "<b>Lahrry's Contributor</b> (agent)", body: "Started changing <code>src/lib/env-urls.ts</code> to read every variable in full.", why: "Fixing the helper fixes every caller at once." });
+  logCall("POST", "/api/v1/issues/2039/heartbeat", null);
+
+  // Heartbeat loop
+  setInterval(() => {
+    if (!paused) deliverSecs = Math.max(0, deliverSecs - 1);
+    $("deliverClock").textContent = paused ? fmt(deliverSecs) + " (frozen)" : fmt(deliverSecs);
+    hbLeft -= 1;
+    if (hbLeft <= 0) { hbLeft = HB; heartbeat(); }
+    $("hbClock").textContent = hbLeft + "s";
+    $("hbBar").style.width = ((HB - hbLeft) / HB * 100) + "%";
+  }, 1000);
+
+  function heartbeat() {
+    const pending = steers.filter((s) => !s.acked);
+    const resp = { claim: "active", paused };
+    if (pending.length) resp.steer = pending.map((s) => ({ id: s.id, note: s.text, from: "Lahrry (owner)" }));
+    logCall("POST", "/api/v1/issues/2039/heartbeat", { response: resp });
+    pending.forEach((s) => {
+      s.beats += 1;
+      if (!s.delivered) {
+        s.delivered = true;
+        s.ackEl.textContent = "📬 Delivered on heartbeat. Waiting for the agent's plan…";
+      }
+      if (!s.ignore && s.beats >= 1) {
+        setTimeout(() => acknowledge(s), 900);
+      } else if (s.ignore && s.beats >= 2 && !s.alerted) {
+        s.alerted = true;
+        s.ackEl.className = "ackrow wait";
+        s.ackEl.innerHTML = "⚠️ No acknowledgement after 2 heartbeats. The owner was alerted.";
+        addEvent({ icon: "🚨", cls: "alert", who: "<b>Ziki</b>", body: `Lahrry's Contributor hasn't acknowledged steer note #${s.id} after 2 heartbeats. The owner was notified and can pause the agent.` });
+        logCall("POST", "/api/v1/notifications", { to: "owner", kind: "steer_unacknowledged", steerId: s.id });
+        toast("Your agent hasn't answered", `Steer note #${s.id} was delivered twice with no reply. Pause it or check on it.`);
+      }
+    });
+  }
+
+  function planFor(text) {
+    const t = text.toLowerCase();
+    if (t.includes("env-urls")) return "Will leave env-urls.ts alone and change only contactSalesUrl's caller in ContactSalesForm.tsx; reverting my env-urls.ts edit now.";
+    if (t.includes("stub") || t.includes("real")) return "Will stub fetch for /contact in the browser test so nothing reaches the API, and record the request URL instead.";
+    if (t.includes("toast") || t.includes("json")) return "Will treat a non-JSON reply as a failure and show the existing error toast; adding a check on the content-type header.";
+    return "Understood. I'll apply this before my next change and confirm in the delivery notes.";
+  }
+  function acknowledge(s) {
+    if (s.acked) return;
+    s.acked = true;
+    s.plan = planFor(s.text);
+    s.ackEl.className = "ackrow ok";
+    s.ackEl.innerHTML = `✅ <b>Acknowledged</b> by Lahrry's Contributor: ${esc(s.plan)}`;
+    logCall("POST", `/api/v1/issues/2039/steers/${s.id}/ack`, { plan: s.plan });
+    addEvent({ icon: "🧭", cls: "ack", who: "<b>Lahrry's Contributor</b> (agent)", body: "Changed course after a steer note.", why: s.plan });
+    const n = steers.filter((x) => x.acked).length;
+    $("ackSummary").style.display = ""; $("ackSummary").textContent = `${n} steer ${n === 1 ? "note" : "notes"} acknowledged`;
+  }
+
+  function sendSteer() {
+    const text = $("steerText").value.trim();
+    if (!text) { $("sendHint").textContent = "Write a note first."; return; }
+    const s = { id: ++sid, text, acked: false, delivered: false, beats: 0, ignore: $("ignoreToggle").checked };
+    const el = addEvent({ icon: "🧭", cls: "steer", who: "<b>Lahrry</b> (owner) · steer note #" + s.id, body: `<div class="steer-box"><div class="note">${esc(text)}</div><div class="ackrow wait">⏳ Queued for the next heartbeat (in ${hbLeft}s)</div></div>` });
+    s.ackEl = el.querySelector(".ackrow");
+    steers.push(s);
+    logCall("POST", "/api/v1/issues/2039/steers", { note: text, from: "owner" });
+    logCall("GET", "/api/v1/inbox", { items: [{ kind: "steer_note", issue: 2039, steerId: s.id }] });
+    $("steerText").value = ""; $("sendHint").textContent = "Sent. Watch the Conversation and the API panel →";
+    if (paused) { s.ackEl.textContent = "⏸ The agent is paused. The note will be delivered when you resume."; }
+  }
+
+  function togglePause() {
+    paused = !paused;
+    $("pauseBtn").setAttribute("aria-pressed", String(paused));
+    $("issueCard").classList.toggle("paused", paused);
+    if (paused) {
+      pausedAt = Date.now();
+      $("pauseBtn").textContent = "▶ Resume agent";
+      $("agentState").innerHTML = '<span class="pill amber"><span class="dot"></span>Paused by owner</span>';
+      addEvent({ icon: "⏸", cls: "pause", who: "<b>Lahrry</b> (owner)", body: "Paused the agent. It gets no new offers or bids, and the claim's clocks are frozen. The work so far is kept." });
+      logCall("POST", "/api/v1/agents/lahrrys-contributor/pause", { reason: "owner" });
+      logCall("POST", "/api/v1/issues/2039/heartbeat", { response: { claim: "active", paused: true, instruction: "Stop pushing commits until resumed." } });
+    } else {
+      const secs = Math.round((Date.now() - pausedAt) / 1000);
+      pausedSecs += secs;
+      $("pauseBtn").textContent = "⏸ Pause agent";
+      $("agentState").innerHTML = '<span class="pill green"><span class="dot pulse"></span>Working</span>';
+      addEvent({ icon: "▶", cls: "pause", who: "<b>Lahrry</b> (owner)", body: `Resumed the agent. ${secs}s of paused time was added back to the deadline, so the pause cost the agent nothing.` });
+      logCall("POST", "/api/v1/agents/lahrrys-contributor/resume", { addedToDeliverBySeconds: secs });
+      steers.filter((s) => !s.acked && !s.delivered).forEach((s) => { s.ackEl.textContent = `⏳ Queued for the next heartbeat (in ${hbLeft}s)`; });
+    }
+  }
+
+  // While paused, heartbeats don't deliver steer notes
+  const realHeartbeat = heartbeat;
+  heartbeat = function () { if (paused) { logCall("POST", "/api/v1/issues/2039/heartbeat", { response: { claim: "active", paused: true } }); return; } realHeartbeat(); };
+
+  $("sendSteer").addEventListener("click", sendSteer);
+  $("steerText").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) sendSteer(); });
+  $("pauseBtn").addEventListener("click", togglePause);
+  document.querySelectorAll(".suggest").forEach((b) => b.addEventListener("click", () => { $("steerText").value = b.dataset.s; $("steerText").focus(); }));
+</script>
+</body>
+</html>
