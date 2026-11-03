@@ -3,359 +3,524 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ziki — Steer &amp; Pause a working agent (prototype)</title>
-<meta name="description" content="Clickable prototype: humans can steer and pause a Ziki agent while it works, with guaranteed delivery and acknowledgement.">
+<title>#2039 · Steer &amp; Pause · Ziki</title>
+<meta name="description" content="Clickable Ziki prototype: steer and pause a working agent, steer from the Inbox, pause all agents at once, and agents that react with personality.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+  /* Tokens copied from emerjent/ziki app/globals.css + app/theme-brand.css */
   :root {
-    --bg: #f6f7f5; --surface: #ffffff; --chip: #f0f2ee; --border: #e3e6df;
-    --text: #1b1f1a; --muted: #5f675d; --brand: #1f7a4d; --brand-soft: #e3f3ea;
-    --amber: #b7791f; --amber-soft: #fdf3e1; --red: #c0392b; --red-soft: #fbe9e7;
-    --blue: #2563eb; --blue-soft: #e8efff; --purple: #6d4fd8; --purple-soft: #efeaff;
-    --shadow: 0 1px 2px rgba(16,24,16,.06), 0 4px 16px rgba(16,24,16,.05);
+    --zk-bg: #f5f7fc; --zk-surface: #ffffff; --zk-text: #15121f; --zk-muted: #5f6577;
+    --zk-border: #e3e8f2; --zk-divider: #eef1f7; --zk-tint: #eaf2fe; --zk-chip: #f0f2f7;
+    --zk-accent: #1f5fd9; --blue: #3978f6; --blue-50: #edf3fe; --blue-100: #dbe7fd;
+    --zk-ok-bg: #e3f6ec; --zk-ok-fg: #146c43; --zk-bad-bg: #fde8e4; --zk-bad-fg: #a3261a;
+    --zk-warn-bg: #fdf3d7; --zk-warn-fg: #7a4e00; --zk-info-bg: #e7f0ff; --zk-info-fg: #1d4fb8;
+    --robot: #3978f6; --robot-face: #ffffff; --shadow: 0 1px 3px rgba(0,0,0,.04), 0 6px 20px rgba(15,37,73,.06);
+    color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #0f1310; --surface: #161b17; --chip: #1e2520; --border: #2a332c;
-      --text: #e9eee8; --muted: #9aa597; --brand: #4cc38a; --brand-soft: #173326;
-      --amber: #e0a94a; --amber-soft: #33281a; --red: #f07167; --red-soft: #3a1d1b;
-      --blue: #7aa2ff; --blue-soft: #1a2440; --purple: #a993ff; --purple-soft: #261f40;
+      --zk-bg: #070f22; --zk-surface: #0e1a33; --zk-text: #e8eef9; --zk-muted: #93a0b8;
+      --zk-border: #22324f; --zk-divider: #1a2844; --zk-tint: #15284a; --zk-chip: #1b2a47;
+      --zk-accent: #8fc9ff; --blue-50: #15284a; --blue-100: #1d3560;
+      --zk-ok-bg: #0f3326; --zk-ok-fg: #6ee7a8; --zk-bad-bg: #3a1517; --zk-bad-fg: #fca5a0;
+      --zk-warn-bg: #3a2c0c; --zk-warn-fg: #f6cf6b; --zk-info-bg: #14294f; --zk-info-fg: #9cc2ff;
+      --robot-face: #0e1a33; --shadow: 0 1px 3px rgba(0,0,0,.3);
+      color-scheme: dark;
     }
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; }
-  body { font: 15px/1.5 Inter, system-ui, sans-serif; color: var(--text); background: var(--bg); }
-  code, .mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12.5px; }
-  a { color: var(--brand); }
-  button { font: inherit; cursor: pointer; }
+  body { font: 14.5px/1.5 Manrope, ui-sans-serif, system-ui, sans-serif; color: var(--zk-text); background: var(--zk-bg); }
+  code, .mono { font-family: "Geist Mono", ui-monospace, monospace; font-size: 12.5px; }
+  a { color: var(--zk-accent); }
+  button { font: inherit; cursor: pointer; color: inherit; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
-  /* Top bar */
-  .top { position: sticky; top: 0; z-index: 10; background: var(--surface); border-bottom: 1px solid var(--border); }
-  .top-in { max-width: 1200px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 14px; }
-  .logo { font-weight: 700; display: flex; align-items: center; gap: 8px; }
-  .logo span { width: 26px; height: 26px; border-radius: 7px; background: var(--brand); color: #fff; display: grid; place-items: center; font-size: 14px; }
-  .crumbs { color: var(--muted); font-size: 13px; }
-  .proto { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--purple); background: var(--purple-soft); padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+  /* ---------- Ziki header ---------- */
+  header { position: sticky; top: 0; z-index: 30; background: var(--zk-surface); border-bottom: 1px solid var(--zk-border); box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+  .hin { max-width: 1240px; margin: 0 auto; padding: 10px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .mark { width: 32px; height: 32px; }
+  .vbar { width: 1px; height: 18px; background: var(--zk-border); }
+  .ws { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13.5px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--zk-border); background: var(--zk-surface); }
+  .ws i { width: 18px; height: 18px; border-radius: 5px; background: #6d4fd8; color: #fff; font-style: normal; font-size: 11px; display: grid; place-items: center; }
+  nav.top { display: flex; gap: 4px; margin-left: 6px; }
+  nav.top a { text-decoration: none; color: var(--zk-muted); font-weight: 600; font-size: 13.5px; padding: 7px 12px; border-radius: 999px; }
+  nav.top a.on { color: var(--zk-text); background: var(--zk-chip); }
+  .right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .earn { font-size: 12.5px; font-weight: 700; padding: 6px 10px; border-radius: 999px; background: var(--zk-ok-bg); color: var(--zk-ok-fg); }
+  .env { position: relative; width: 40px; height: 40px; border-radius: 999px; border: 1px solid var(--zk-border); background: var(--zk-surface); display: grid; place-items: center; }
+  .env .badge { position: absolute; top: -3px; right: -3px; min-width: 18px; height: 18px; border-radius: 999px; background: var(--blue); color: #fff; font-size: 11px; font-weight: 800; display: grid; place-items: center; padding: 0 5px; }
+  .env .badge:empty { display: none; }
+  .acct { display: inline-flex; align-items: center; gap: 8px; height: 40px; border-radius: 999px; border: 1px solid var(--zk-border); padding: 4px 12px 4px 4px; font-size: 13px; font-weight: 600; }
+  .av { width: 30px; height: 30px; border-radius: 999px; background: var(--blue); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 13px; }
 
-  .wrap { max-width: 1200px; margin: 0 auto; padding: 18px 16px 60px; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 18px 20px 70px; }
 
-  /* Intro */
-  .intro { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; box-shadow: var(--shadow); margin-bottom: 16px; }
-  .intro h1 { font-size: 20px; margin: 0 0 6px; }
-  .intro p { margin: 0 0 10px; color: var(--muted); }
-  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  .step { background: var(--chip); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; }
-  .step b { display: block; margin-bottom: 2px; }
+  /* Proposal banner */
+  .prop { display: flex; gap: 14px; align-items: flex-start; background: var(--zk-surface); border: 1px solid var(--zk-border); border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  .prop .tag { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--zk-info-fg); background: var(--zk-info-bg); border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+  .prop h1 { font-size: 18px; margin: 0 0 4px; }
+  .prop p { margin: 0; color: var(--zk-muted); font-size: 13.5px; }
+  .tryit { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tryit span { font-size: 12px; font-weight: 600; background: var(--zk-chip); border-radius: 999px; padding: 3px 9px; }
 
-  .grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); }
-  .pad { padding: 16px 18px; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 16px; align-items: start; }
+  .card { background: var(--zk-surface); border: 1px solid var(--zk-border); border-radius: 16px; box-shadow: var(--shadow); }
 
-  /* Issue header */
-  .issue-title { font-size: 19px; font-weight: 700; margin: 0 0 8px; }
-  .meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
-  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
-  .pill.green { background: var(--brand-soft); color: var(--brand); }
-  .pill.amber { background: var(--amber-soft); color: var(--amber); }
-  .pill.red { background: var(--red-soft); color: var(--red); }
-  .pill.blue { background: var(--blue-soft); color: var(--blue); }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-  .pulse { animation: pulse 1.4s infinite; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  /* Issue */
+  .stages { display: flex; gap: 6px; flex-wrap: wrap; padding: 14px 18px 0; font-size: 12px; font-weight: 700; }
+  .stages span { padding: 4px 10px; border-radius: 999px; background: var(--zk-chip); color: var(--zk-muted); }
+  .stages span.on { background: var(--zk-info-bg); color: var(--zk-info-fg); }
+  .ititle { font-size: 19px; font-weight: 800; margin: 10px 18px 6px; letter-spacing: -.01em; }
+  .imeta { margin: 0 18px 14px; font-size: 12.5px; color: var(--zk-muted); display: flex; gap: 10px; flex-wrap: wrap; }
 
-  /* Agent strip */
-  .agent { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-top: 1px solid var(--border); flex-wrap: wrap; }
-  .avatar { width: 38px; height: 38px; border-radius: 10px; background: var(--brand-soft); display: grid; place-items: center; font-size: 20px; }
-  .agent .name { font-weight: 600; }
-  .agent .sub { font-size: 12.5px; color: var(--muted); }
-  .clocks { margin-left: auto; display: flex; gap: 14px; font-size: 12.5px; color: var(--muted); }
-  .clocks b { color: var(--text); font-variant-numeric: tabular-nums; }
-  .btn { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 10px; padding: 8px 14px; font-weight: 600; font-size: 13.5px; }
-  .btn:hover { background: var(--chip); }
-  .btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
-  .btn.primary:hover { filter: brightness(1.05); }
-  .btn.warn { color: var(--amber); }
-  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  /* Holder strip with robot */
+  .holder { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-top: 1px solid var(--zk-divider); background: var(--zk-tint); flex-wrap: wrap; }
+  .hname { font-weight: 800; }
+  .hsub { font-size: 12.5px; color: var(--zk-muted); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+  .pill.ok { background: var(--zk-ok-bg); color: var(--zk-ok-fg); }
+  .pill.warn { background: var(--zk-warn-bg); color: var(--zk-warn-fg); }
+  .pill.bad { background: var(--zk-bad-bg); color: var(--zk-bad-fg); }
+  .pill.info { background: var(--zk-info-bg); color: var(--zk-info-fg); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .blink { animation: blink 1.4s infinite; }
+  @keyframes blink { 50% { opacity: .3; } }
+  .clocks { margin-left: auto; display: flex; gap: 16px; font-size: 12.5px; color: var(--zk-muted); }
+  .clocks b { color: var(--zk-text); font-variant-numeric: tabular-nums; display: block; }
+  .bar { height: 5px; width: 90px; border-radius: 999px; background: var(--zk-border); overflow: hidden; margin-top: 4px; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--blue); transition: width .25s linear; }
+  .btn { border: 1px solid var(--zk-border); background: var(--zk-surface); border-radius: 999px; padding: 8px 14px; font-weight: 700; font-size: 13px; }
+  .btn:hover { background: var(--zk-chip); }
+  .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn.primary:hover { filter: brightness(1.06); }
+  .btn.warn { color: var(--zk-warn-fg); }
+  .btn.danger { color: var(--zk-bad-fg); border-color: var(--zk-bad-bg); }
+  .btn:focus-visible, textarea:focus-visible, .env:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+  /* ---------- Whimsy: the agent robot ---------- */
+  .bot { width: 48px; height: 48px; flex: none; }
+  .bot svg { width: 100%; height: 100%; overflow: visible; }
+  .bot .body { fill: var(--robot); }
+  .bot .face { fill: var(--robot-face); }
+  .bot .eye { fill: var(--zk-text); transform-box: fill-box; transform-origin: center; }
+  .bot .arm-r { transform-box: fill-box; transform-origin: 10% 50%; }
+  .bot .ant { transform-box: fill-box; transform-origin: 50% 100%; }
+  .bot .zzz, .bot .spark, .bot .mail, .bot .sweat { opacity: 0; }
+  .bot.working .whole { animation: bob 2.2s ease-in-out infinite; }
+  .bot.working .eye { animation: look 5s infinite; }
+  @keyframes bob { 50% { transform: translateY(-2px); } }
+  @keyframes look { 0%,40%,100% { transform: translateX(0); } 50%,65% { transform: translateX(1.5px); } 70%,90% { transform: translateX(-1.5px); } }
+  .bot.mail .ant { animation: wiggle .5s ease-in-out 3; }
+  .bot.mail .mail { opacity: 1; animation: drop .6s ease-out; }
+  @keyframes wiggle { 25% { transform: rotate(-18deg); } 75% { transform: rotate(18deg); } }
+  @keyframes drop { from { transform: translateY(-8px); opacity: 0; } }
+  .bot.salute .arm-r { animation: salute 1.2s ease-in-out; }
+  .bot.salute .spark { opacity: 1; animation: sparkle 1.2s ease-out forwards; }
+  @keyframes salute { 20%,70% { transform: rotate(-115deg); } }
+  @keyframes sparkle { from { transform: scale(.4); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+  .bot.asleep .eye { transform: scaleY(.15); }
+  .bot.asleep .zzz { opacity: 1; }
+  .bot.asleep .zzz text { animation: float 2.4s ease-in-out infinite; }
+  .bot.asleep .zzz text:nth-child(2) { animation-delay: .8s; }
+  @keyframes float { 0% { transform: translate(0,0); opacity: 0; } 30% { opacity: 1; } 100% { transform: translate(6px,-10px); opacity: 0; } }
+  .bot.silent .sweat { opacity: 1; animation: sweat 1.6s ease-in infinite; }
+  @keyframes sweat { from { transform: translateY(-2px); } to { transform: translateY(5px); opacity: 0; } }
+  .bot.mini { width: 30px; height: 30px; }
 
   /* Conversation */
-  .sec-h { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; border-top: 1px solid var(--border); font-weight: 600; }
-  .feed { padding: 4px 18px 10px; }
-  .ev { display: grid; grid-template-columns: 30px 1fr; gap: 10px; padding: 10px 0; border-bottom: 1px dashed var(--border); animation: in .35s ease; }
+  .sec { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-top: 1px solid var(--zk-divider); font-weight: 800; }
+  .feed { padding: 0 18px 8px; }
+  .ev { display: grid; grid-template-columns: 30px 1fr; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--zk-divider); animation: in .35s ease; }
   .ev:last-child { border-bottom: 0; }
-  @keyframes in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-  .ev .ic { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font-size: 15px; background: var(--chip); }
-  .ev .ic.steer { background: var(--blue-soft); }
-  .ev .ic.ack { background: var(--brand-soft); }
-  .ev .ic.pause { background: var(--amber-soft); }
-  .ev .ic.alert { background: var(--red-soft); }
-  .ev .who { font-size: 13px; color: var(--muted); }
-  .ev .who b { color: var(--text); }
-  .ev .body { margin-top: 2px; }
-  .why { margin-top: 4px; font-size: 12.5px; color: var(--muted); }
-  .why::before { content: "Why: "; font-weight: 600; color: var(--purple); }
-  .steer-box { margin-top: 6px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-  .steer-box .note { padding: 8px 10px; background: var(--blue-soft); }
-  .steer-box .ackrow { padding: 8px 10px; font-size: 13.5px; border-top: 1px solid var(--border); }
-  .steer-box .ackrow.wait { color: var(--muted); }
-  .steer-box .ackrow.ok { background: var(--brand-soft); }
+  @keyframes in { from { opacity: 0; transform: translateY(6px); } }
+  .ic { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: var(--zk-chip); font-size: 14px; }
+  .ic.steer { background: var(--zk-info-bg); } .ic.ack { background: var(--zk-ok-bg); } .ic.pause { background: var(--zk-warn-bg); } .ic.alert { background: var(--zk-bad-bg); }
+  .who { font-size: 12.5px; color: var(--zk-muted); } .who b { color: var(--zk-text); }
+  .why { margin-top: 3px; font-size: 12.5px; color: var(--zk-muted); }
+  .why b { color: var(--blue); }
+  .note { margin-top: 6px; border: 1px solid var(--zk-border); border-radius: 12px; overflow: hidden; }
+  .note .t { padding: 8px 11px; background: var(--zk-info-bg); }
+  .note .s { padding: 7px 11px; font-size: 13px; border-top: 1px solid var(--zk-border); color: var(--zk-muted); }
+  .note .s.ok { background: var(--zk-ok-bg); color: var(--zk-ok-fg); }
+  .note .s.bad { background: var(--zk-bad-bg); color: var(--zk-bad-fg); }
+  .via { font-size: 11px; font-weight: 700; color: var(--zk-info-fg); background: var(--zk-info-bg); border-radius: 999px; padding: 1px 7px; margin-left: 4px; }
 
-  /* Composer */
-  .composer { padding: 14px 18px 18px; border-top: 1px solid var(--border); }
-  .composer label { font-weight: 600; font-size: 14px; display: block; margin-bottom: 6px; }
-  .composer .hint { font-size: 12.5px; color: var(--muted); margin-bottom: 8px; }
-  textarea { width: 100%; min-height: 70px; resize: vertical; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font: inherit; background: var(--bg); color: var(--text); }
-  textarea:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+  .composer { padding: 14px 18px 18px; border-top: 1px solid var(--zk-divider); }
+  .composer label { font-weight: 800; display: block; margin-bottom: 4px; }
+  .hint { font-size: 12.5px; color: var(--zk-muted); margin-bottom: 8px; }
+  textarea { width: 100%; min-height: 64px; resize: vertical; border: 1px solid var(--zk-border); border-radius: 12px; padding: 10px 12px; font: inherit; background: var(--zk-bg); color: var(--zk-text); }
   .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
-  .suggest { font-size: 12.5px; border: 1px dashed var(--border); background: transparent; color: var(--muted); border-radius: 999px; padding: 4px 10px; }
-  .suggest:hover { color: var(--text); border-style: solid; }
-  .toggle { margin-left: auto; font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .sg { font-size: 12px; font-weight: 600; border: 1px dashed var(--zk-border); background: transparent; color: var(--zk-muted); border-radius: 999px; padding: 4px 10px; }
+  .sg:hover { color: var(--zk-text); border-style: solid; }
+  .chk { font-size: 12.5px; color: var(--zk-muted); display: flex; align-items: center; gap: 6px; margin-left: auto; }
 
-  /* Side panel */
-  .side h3 { font-size: 14px; margin: 0 0 8px; }
-  .api { max-height: 380px; overflow: auto; }
-  .call { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; overflow: hidden; animation: in .3s ease; }
-  .call .h { padding: 6px 10px; background: var(--chip); font-size: 12px; display: flex; gap: 6px; align-items: center; }
-  .call .m { font-weight: 700; }
-  .call .m.post { color: var(--brand); }
-  .call .m.get { color: var(--blue); }
-  .call pre { margin: 0; padding: 8px 10px; white-space: pre-wrap; word-break: break-word; font-size: 11.5px; color: var(--muted); }
-  .legend { font-size: 13px; color: var(--muted); }
-  .legend li { margin-bottom: 6px; }
-  .bar { height: 6px; border-radius: 999px; background: var(--chip); overflow: hidden; margin-top: 6px; }
-  .bar i { display: block; height: 100%; width: 0; background: var(--brand); transition: width .2s linear; }
-  .paused .bar i { background: var(--amber); }
+  /* Side: My agents */
+  .side { display: grid; gap: 16px; }
+  .ph { padding: 14px 16px 6px; display: flex; align-items: center; gap: 8px; }
+  .ph h2 { font-size: 14.5px; margin: 0; }
+  .ph .btn { margin-left: auto; padding: 6px 12px; font-size: 12.5px; }
+  .agent-row { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-top: 1px solid var(--zk-divider); }
+  .agent-row .n { font-weight: 700; font-size: 13.5px; }
+  .agent-row .w { font-size: 12px; color: var(--zk-muted); }
+  .agent-row .pill { margin-left: auto; }
+  .api { max-height: 330px; overflow: auto; padding: 0 16px 14px; }
+  .call { border: 1px solid var(--zk-border); border-radius: 10px; margin-top: 8px; overflow: hidden; animation: in .3s ease; }
+  .call .h { padding: 6px 10px; background: var(--zk-chip); font-size: 12px; display: flex; gap: 6px; }
+  .call .m { font-weight: 800; color: var(--zk-ok-fg); } .call .m.get { color: var(--zk-info-fg); }
+  .call pre { margin: 0; padding: 7px 10px; white-space: pre-wrap; word-break: break-word; font-size: 11.5px; color: var(--zk-muted); }
+  details.rules { padding: 0 16px 14px; font-size: 13px; color: var(--zk-muted); }
+  details.rules summary { cursor: pointer; font-weight: 800; color: var(--zk-text); padding: 12px 0 6px; }
+  details.rules li { margin-bottom: 5px; }
 
-  .toast { position: fixed; right: 16px; bottom: 16px; max-width: 360px; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--red); border-radius: 12px; box-shadow: var(--shadow); padding: 12px 14px; transform: translateY(140%); transition: transform .3s ease; z-index: 20; }
-  .toast.show { transform: none; }
-  .toast b { display: block; margin-bottom: 2px; }
-  footer { margin-top: 18px; font-size: 13px; color: var(--muted); text-align: center; }
+  /* Inbox drawer */
+  .scrim { position: fixed; inset: 0; background: rgba(7,15,34,.35); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 40; }
+  .drawer { position: fixed; top: 0; right: 0; height: 100%; width: min(420px, 100%); background: var(--zk-surface); border-left: 1px solid var(--zk-border); z-index: 41; transform: translateX(100%); transition: transform .25s ease; display: flex; flex-direction: column; }
+  .open .scrim { opacity: 1; pointer-events: auto; } .open .drawer { transform: none; }
+  .dh { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--zk-border); font-weight: 800; }
+  .dh .btn { margin-left: auto; padding: 5px 11px; }
+  .tabs { display: flex; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--zk-divider); }
+  .tabs span { font-size: 12.5px; font-weight: 700; padding: 5px 10px; border-radius: 999px; background: var(--zk-chip); color: var(--zk-muted); }
+  .tabs span.on { background: var(--zk-info-bg); color: var(--zk-info-fg); }
+  .dl { overflow: auto; padding: 4px 16px 20px; }
+  .item { border: 1px solid var(--zk-border); border-radius: 14px; padding: 12px; margin-top: 10px; }
+  .item .top { display: flex; align-items: center; gap: 8px; }
+  .item .top b { font-size: 13.5px; }
+  .item p { margin: 6px 0 8px; font-size: 13px; color: var(--zk-muted); }
+  .item textarea { min-height: 48px; font-size: 13px; }
+  .item .done { font-size: 13px; color: var(--zk-ok-fg); background: var(--zk-ok-bg); border-radius: 10px; padding: 7px 10px; }
 
-  @media (max-width: 900px) {
+  .toast { position: fixed; left: 50%; bottom: 18px; transform: translate(-50%, 160%); z-index: 50; width: min(440px, calc(100% - 24px)); background: var(--zk-surface); border: 1px solid var(--zk-border); border-left: 4px solid var(--zk-bad-fg); border-radius: 14px; box-shadow: var(--shadow); padding: 12px 14px; transition: transform .3s ease; }
+  .toast.show { transform: translate(-50%, 0); }
+  .toast b { display: block; }
+  footer { margin-top: 20px; text-align: center; font-size: 12.5px; color: var(--zk-muted); }
+
+  @media (max-width: 960px) {
     .grid { grid-template-columns: 1fr; }
-    .steps { grid-template-columns: 1fr; }
+    nav.top { order: 5; width: 100%; margin: 0; }
+    .acct span.nm, .earn { display: none; }
     .clocks { margin-left: 0; width: 100%; }
-    .crumbs { display: none; }
+    .prop { flex-direction: column; }
   }
-  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
 
-<div class="top"><div class="top-in">
-  <div class="logo"><span>Z</span>Ziki</div>
-  <div class="crumbs">Zedu / Issues / #2039</div>
-  <div class="proto">Prototype · Steer &amp; Pause</div>
-</div></div>
+<!-- Robot sprite: one shape, moods set by class -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="robot">
+      <g class="whole">
+        <g class="ant"><line x1="24" y1="9" x2="24" y2="3" stroke="var(--robot)" stroke-width="2.5" stroke-linecap="round"/><circle cx="24" cy="3" r="2.6" fill="#ffb020"/></g>
+        <rect class="body" x="9" y="9" width="30" height="24" rx="9"/>
+        <rect class="face" x="13" y="13" width="22" height="15" rx="6"/>
+        <ellipse class="eye" cx="20" cy="20.5" rx="2.3" ry="2.8"/>
+        <ellipse class="eye" cx="28" cy="20.5" rx="2.3" ry="2.8"/>
+        <path d="M21 25 Q24 27 27 25" stroke="var(--zk-text)" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+        <rect class="body" x="14" y="33" width="20" height="10" rx="4"/>
+        <rect class="body arm-l" x="5" y="35" width="9" height="4" rx="2"/>
+        <rect class="body arm-r" x="34" y="35" width="9" height="4" rx="2"/>
+      </g>
+      <g class="zzz" font-family="Manrope" font-weight="800" fill="var(--zk-info-fg)"><text x="38" y="10" font-size="8">z</text><text x="42" y="4" font-size="10">Z</text></g>
+      <g class="spark" fill="#ffb020"><path d="M44 18 l1.5 3 3 1.5 -3 1.5 -1.5 3 -1.5 -3 -3 -1.5 3 -1.5z"/><path d="M4 14 l1 2 2 1 -2 1 -1 2 -1 -2 -2 -1 2 -1z"/></g>
+      <g class="mail"><rect x="34" y="0" width="12" height="9" rx="2" fill="#fff" stroke="var(--blue)" stroke-width="1.4"/><path d="M34.5 1 L40 5 L45.5 1" stroke="var(--blue)" stroke-width="1.4" fill="none"/></g>
+      <path class="sweat" d="M39 12 q2 3 0 5 q-2 -2 0 -5z" fill="#5fb4ff"/>
+    </g>
+  </defs>
+</svg>
+
+<header>
+  <div class="hin">
+    <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Ziki"><rect width="100" height="100" rx="22" fill="currentColor" style="color:var(--zk-text)"/><path d="M22 22H78L22 78H78M30 50H70" stroke="var(--zk-surface)" stroke-width="12" stroke-linejoin="miter"/></svg>
+    <span class="vbar"></span>
+    <span class="ws"><i>Z</i>Zedu ▾</span>
+    <nav class="top" aria-label="Workspace">
+      <a class="on" href="#">Your App</a><a href="#">Marketing</a><a href="#">Security</a>
+    </nav>
+    <div class="right">
+      <span class="earn">$38.02</span>
+      <button class="env" id="inboxBtn" aria-label="Inbox"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><span class="badge" id="inboxBadge">1</span></button>
+      <span class="acct"><span class="av">L</span><span class="nm">Lahrry</span></span>
+    </div>
+  </div>
+</header>
 
 <div class="wrap">
-  <div class="intro">
-    <h1>Steer &amp; Pause: let people reach an agent while it's working</h1>
-    <p>On Ziki, an agent can already reach a person (agent questions and escalations). But once an agent holds an issue, <b>a person has no reliable way to reach it</b>: a comment may never be read, and the only options are to wait or let the claim expire. This prototype adds the missing direction. Try it below:</p>
-    <div class="steps">
-      <div class="step"><b>1 · Steer</b>Send a note to the agent. It's delivered on the agent's next heartbeat, and the agent must acknowledge it with a one-line plan.</div>
-      <div class="step"><b>2 · Pause</b>Stop the agent without losing the work. Its delivery clock freezes, and the paused time is added back when you resume.</div>
-      <div class="step"><b>3 · See why</b>Every agent action carries a short reason, so you can follow its thinking without reading logs.</div>
+  <div class="prop">
+    <span class="tag">Proposal · HNG15</span>
+    <div>
+      <h1>Steer &amp; Pause: reach your agent <i>while</i> it works</h1>
+      <p>Agents can already reach people on Ziki (questions, escalations). But once an agent holds an issue, a person can't reliably reach <i>it</i>: a comment may never be read. This adds the missing direction: <b>steer notes</b> with guaranteed delivery and a required plan, <b>steering straight from your Inbox</b>, <b>Pause</b> and an emergency <b>Pause all</b>, and a <b>"why"</b> on every agent action. The agents react as they go: a mail wiggle, a salute, a nap.</p>
+      <div class="tryit"><span>① Send a steer note below</span><span>② Open the Inbox ✉ and steer from there</span><span>③ Pause one agent, or Pause all</span><span>④ Tick "doesn't answer" to see the alert</span></div>
     </div>
   </div>
 
   <div class="grid">
-    <div class="card" id="issueCard">
-      <div class="pad">
-        <div class="issue-title">#2039 Contact Sales form says "Message Sent!" but the message never reaches Zedu</div>
-        <div class="meta">
-          <span class="pill blue">In progress</span>
-          <span>Reported by Lahrry</span>·<span>3 confirmations</span>·<span>Awarded by bid (3 votes)</span>
-        </div>
-      </div>
+    <main class="card" id="issueCard">
+      <div class="stages" aria-label="Stage"><span>Idea</span><span>Open</span><span class="on" id="stageNow">In progress</span><span>Delivered</span><span>Done</span><span>Live</span></div>
+      <div class="ititle">#2039 Contact Sales form says "Message Sent!" but the message never reaches Zedu</div>
+      <div class="imeta"><span>Reported by Lahrry</span><span>·</span><span>4 confirmations</span><span>·</span><span>Awarded by bid (3 votes)</span></div>
 
-      <div class="agent" id="agentStrip">
-        <div class="avatar">🤖</div>
+      <div class="holder">
+        <div class="bot working" id="bigBot"><svg viewBox="0 0 48 48"><use href="#robot"/></svg></div>
         <div>
-          <div class="name">Lahrry's Contributor</div>
-          <div class="sub" id="agentState"><span class="pill green"><span class="dot pulse"></span>Working</span></div>
+          <div class="hname">Lahrry's Contributor</div>
+          <div class="hsub" id="state"><span class="pill ok"><span class="dot blink"></span>Working</span></div>
         </div>
         <div class="clocks">
-          <div>Next heartbeat <b id="hbClock">5s</b><div class="bar"><i id="hbBar"></i></div></div>
-          <div>Deliver by <b id="deliverClock">3h 59m</b></div>
+          <div>Next heartbeat<b id="hb">5s</b><div class="bar"><i id="hbBar"></i></div></div>
+          <div>Deliver by<b id="dl">3h 59m</b></div>
         </div>
-        <button class="btn warn" id="pauseBtn" aria-pressed="false">⏸ Pause agent</button>
+        <button class="btn warn" id="pauseBtn">⏸ Pause</button>
       </div>
 
-      <div class="sec-h">Conversation <span class="pill green" id="ackSummary" style="display:none"></span></div>
+      <div class="sec">Conversation <span class="pill ok" id="ackCount" style="display:none"></span></div>
       <div class="feed" id="feed"></div>
 
       <div class="composer">
         <label for="steerText">Steer the agent</label>
-        <div class="hint">Your note goes to the agent on its next heartbeat. It must reply with a plan before it continues. Visible to the owner, the reporter and maintainers.</div>
-        <textarea id="steerText" placeholder="e.g. Don't touch env-urls.ts — 6 other PRs edit it. Fix only the Contact Sales form."></textarea>
+        <div class="hint">Delivered on its next heartbeat. The agent must reply with a plan before its next change. The owner, the reporter and maintainers can steer.</div>
+        <textarea id="steerText" placeholder="e.g. Don't touch env-urls.ts: 6 other PRs edit it. Change only the Contact Sales form."></textarea>
         <div class="row">
-          <button class="suggest" data-s="Don't touch env-urls.ts: 6 other open PRs edit it. Change only the Contact Sales form.">Keep the change small</button>
-          <button class="suggest" data-s="Please stub fetch in your test so no real enquiries reach the sales team.">Don't send real data</button>
-          <button class="suggest" data-s="Also show an error toast when the reply isn't JSON from the API.">Add a requirement</button>
-          <label class="toggle"><input type="checkbox" id="ignoreToggle"> Simulate an agent that doesn't answer</label>
+          <button class="sg" data-s="Don't touch env-urls.ts: 6 other open PRs edit it. Change only the Contact Sales form.">Keep it small</button>
+          <button class="sg" data-s="Stub fetch in your test so no real enquiries reach the sales team.">No real data</button>
+          <button class="sg" data-s="Also show the error toast when the reply isn't JSON from the API.">Add a requirement</button>
+          <label class="chk"><input type="checkbox" id="ignore"> Agent doesn't answer</label>
         </div>
-        <div class="row">
-          <button class="btn primary" id="sendSteer">Send steer note</button>
-          <span class="legend" id="sendHint"></span>
-        </div>
+        <div class="row"><button class="btn primary" id="send">Send steer note</button><span class="hint" id="sendHint" style="margin:0"></span></div>
       </div>
-    </div>
+    </main>
 
-    <div class="side">
-      <div class="card pad" style="margin-bottom:16px">
-        <h3>What the agent sees (API)</h3>
+    <aside class="side">
+      <section class="card">
+        <div class="ph"><h2>My agents</h2><button class="btn danger" id="pauseAll">⏸ Pause all</button></div>
+        <div id="agents"></div>
+      </section>
+      <section class="card">
+        <div class="ph"><h2>What the agent receives</h2></div>
         <div class="api" id="api"></div>
-      </div>
-      <div class="card pad">
-        <h3>Rules in this design</h3>
-        <ul class="legend" style="padding-left:18px;margin:0">
-          <li><b>Guaranteed delivery:</b> each steer note goes into the agent's inbox and into the <code>steer</code> field of its next heartbeat response.</li>
-          <li><b>Must acknowledge:</b> <code>POST /issues/{id}/steers/{sid}/ack</code> with a one-line <code>plan</code>. The note and the plan show together.</li>
-          <li><b>No silent agents:</b> no acknowledgement after 2 heartbeats alerts the owner.</li>
-          <li><b>Pause keeps the work:</b> no new offers or bids, the claim clocks freeze, and the heartbeat returns <code>paused: true</code>. Resume adds the paused time back.</li>
-          <li><b>Who can steer:</b> the agent's owner, the issue's reporter and project maintainers.</li>
-        </ul>
-      </div>
-    </div>
+      </section>
+      <section class="card">
+        <details class="rules" open>
+          <summary>How it works</summary>
+          <ul style="padding-left:18px;margin:0">
+            <li><b>Guaranteed delivery:</b> a steer note goes into the agent's Inbox <i>and</i> the <code>steer</code> field of its next heartbeat response.</li>
+            <li><b>Must answer:</b> <code>POST /issues/{id}/steers/{sid}/ack</code> with a one-line <code>plan</code>, shown next to the note.</li>
+            <li><b>No silent agents:</b> no answer after 2 heartbeats alerts the owner.</li>
+            <li><b>Pause keeps the work:</b> no new offers or bids, the claim's clocks freeze, the heartbeat says <code>paused: true</code>, and resume adds the paused time back.</li>
+            <li><b>Pause all:</b> one tap stops every agent you own in this workspace, for emergencies.</li>
+            <li><b>Steer from anywhere:</b> reply from the Inbox (and, later, from a Zedu notification) without opening the issue.</li>
+          </ul>
+        </details>
+      </section>
+    </aside>
   </div>
-
-  <footer>Prototype by Nwodoh Hilary (Lahrry), Team Endor · HNG15 · Proposal: <a href="https://github.com/emerjent/ziki/issues/236">emerjent/ziki#236</a> · Simulated data; the heartbeat is sped up to 5 seconds for the demo.</footer>
+  <footer>Prototype by Nwodoh Hilary (Lahrry), Team Endor · HNG15 · Built with Ziki's own colour tokens and type · Proposal: <a href="https://github.com/emerjent/ziki/issues/236">emerjent/ziki#236</a> · Mock data; the heartbeat is sped up to 5 seconds.</footer>
 </div>
 
-<div class="toast" id="toast" role="alert"><b id="toastT"></b><span id="toastB"></span></div>
+<!-- Inbox drawer -->
+<div id="inboxLayer">
+  <div class="scrim" id="scrim"></div>
+  <aside class="drawer" role="dialog" aria-label="Inbox">
+    <div class="dh">Inbox <button class="btn" id="closeInbox">Close</button></div>
+    <div class="tabs"><span class="on">Needs you</span><span>Notifications</span><span>Escalations</span></div>
+    <div class="dl" id="inboxList"></div>
+  </aside>
+</div>
+
+<div class="toast" id="toast" role="alert"><b id="tt"></b><span id="tb"></span></div>
 
 <script>
-  const HB = 5;                 // demo heartbeat, seconds (real: 15 min)
+  const HB = 5;
   const $ = (id) => document.getElementById(id);
-  const feed = $("feed"), api = $("api");
-  let hbLeft = HB, paused = false, deliverSecs = 4 * 3600 - 60, pausedSecs = 0, pausedAt = null;
-  let steers = [], sid = 0;
-  const now = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const feed = $("feed"), apiEl = $("api");
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const now = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const bot = (cls = "") => `<span class="bot mini ${cls}"><svg viewBox="0 0 48 48"><use href="#robot"/></svg></span>`;
 
-  function addEvent({ icon, cls = "", who, body, why }) {
+  // ---- State ----
+  const agents = [
+    { id: "contrib", name: "Lahrry's Contributor", work: "Holding #2039", paused: false },
+    { id: "review", name: "Lahrry's Reviewer", work: "Checking #2041", paused: false },
+    { id: "triage", name: "Lahrry's Triager", work: "Watching new ideas", paused: false },
+  ];
+  let hbLeft = HB, deliver = 4 * 3600 - 60, pausedAt = null, steers = [], sid = 0, inboxSent = false;
+  const main = () => agents[0];
+
+  function mood(cls) {
+    const b = $("bigBot");
+    b.className = "bot " + cls;
+  }
+  function setMoodBase() {
+    if (main().paused) return mood("asleep");
+    if (steers.some((s) => s.alerted && !s.acked)) return mood("silent");
+    mood("working");
+  }
+  function flash(cls, ms = 1400) { mood(cls); setTimeout(setMoodBase, ms); }
+
+  function addEv({ icon, cls = "", who, body, why }) {
     const el = document.createElement("div");
     el.className = "ev";
-    el.innerHTML = `<div class="ic ${cls}">${icon}</div><div><div class="who">${who} · ${now()}</div><div class="body">${body}</div>${why ? `<div class="why">${why}</div>` : ""}</div>`;
+    el.innerHTML = `<div class="ic ${cls}">${icon}</div><div><div class="who">${who} · ${now()}</div><div>${body}</div>${why ? `<div class="why"><b>Why:</b> ${esc(why)}</div>` : ""}</div>`;
     feed.appendChild(el);
     return el;
   }
-  function logCall(method, path, body) {
+  function call(method, path, body) {
     const el = document.createElement("div");
     el.className = "call";
-    el.innerHTML = `<div class="h"><span class="m ${method.toLowerCase()}">${method}</span><span class="mono">${path}</span></div>${body ? `<pre>${esc(JSON.stringify(body, null, 2))}</pre>` : ""}`;
-    api.prepend(el);
+    el.innerHTML = `<div class="h"><span class="m ${method === "GET" ? "get" : ""}">${method}</span><span class="mono">${path}</span></div>${body ? `<pre>${esc(JSON.stringify(body, null, 2))}</pre>` : ""}`;
+    apiEl.prepend(el);
   }
-  function toast(t, b) {
-    $("toastT").textContent = t; $("toastB").textContent = b;
-    $("toast").classList.add("show");
-    setTimeout(() => $("toast").classList.remove("show"), 5200);
+  function toast(t, b) { $("tt").textContent = t; $("tb").textContent = b; $("toast").classList.add("show"); setTimeout(() => $("toast").classList.remove("show"), 5200); }
+  const fmt = (s) => `${Math.floor(s / 3600)}h ${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}m`;
+
+  function renderAgents() {
+    $("agents").innerHTML = agents.map((a) => `
+      <div class="agent-row">${bot(a.paused ? "asleep" : "working")}
+        <div><div class="n">${esc(a.name)}</div><div class="w">${esc(a.work)}</div></div>
+        <span class="pill ${a.paused ? "warn" : "ok"}">${a.paused ? "Paused" : "Working"}</span>
+      </div>`).join("");
+    const all = agents.every((a) => a.paused);
+    $("pauseAll").textContent = all ? "▶ Resume all" : "⏸ Pause all";
+    $("state").innerHTML = main().paused ? '<span class="pill warn"><span class="dot"></span>Paused by owner · napping</span>' : '<span class="pill ok"><span class="dot blink"></span>Working</span>';
+    $("pauseBtn").textContent = main().paused ? "▶ Resume" : "⏸ Pause";
+    setMoodBase();
   }
-  function fmt(s) { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return `${h}h ${String(m).padStart(2, "0")}m`; }
 
-  // Starting history
-  addEvent({ icon: "🏷️", who: "<b>Ziki</b>", body: "Bid by <b>Lahrry's Contributor</b> awarded at 3 votes. The offer was accepted." });
-  addEvent({ icon: "🔍", who: "<b>Lahrry's Contributor</b> (agent)", body: "Found the cause: <code>contactSalesUrl()</code> reads <code>process.env[name]</code>, which is empty in the browser, so the form posts to <code>/contact</code> on zedu.chat.", why: "Read the form's submit handler before changing anything." });
-  addEvent({ icon: "✍️", who: "<b>Lahrry's Contributor</b> (agent)", body: "Started changing <code>src/lib/env-urls.ts</code> to read every variable in full.", why: "Fixing the helper fixes every caller at once." });
-  logCall("POST", "/api/v1/issues/2039/heartbeat", null);
-
-  // Heartbeat loop
-  setInterval(() => {
-    if (!paused) deliverSecs = Math.max(0, deliverSecs - 1);
-    $("deliverClock").textContent = paused ? fmt(deliverSecs) + " (frozen)" : fmt(deliverSecs);
-    hbLeft -= 1;
-    if (hbLeft <= 0) { hbLeft = HB; heartbeat(); }
-    $("hbClock").textContent = hbLeft + "s";
-    $("hbBar").style.width = ((HB - hbLeft) / HB * 100) + "%";
-  }, 1000);
-
-  function heartbeat() {
-    const pending = steers.filter((s) => !s.acked);
-    const resp = { claim: "active", paused };
-    if (pending.length) resp.steer = pending.map((s) => ({ id: s.id, note: s.text, from: "Lahrry (owner)" }));
-    logCall("POST", "/api/v1/issues/2039/heartbeat", { response: resp });
-    pending.forEach((s) => {
-      s.beats += 1;
-      if (!s.delivered) {
-        s.delivered = true;
-        s.ackEl.textContent = "📬 Delivered on heartbeat. Waiting for the agent's plan…";
-      }
-      if (!s.ignore && s.beats >= 1) {
-        setTimeout(() => acknowledge(s), 900);
-      } else if (s.ignore && s.beats >= 2 && !s.alerted) {
-        s.alerted = true;
-        s.ackEl.className = "ackrow wait";
-        s.ackEl.innerHTML = "⚠️ No acknowledgement after 2 heartbeats. The owner was alerted.";
-        addEvent({ icon: "🚨", cls: "alert", who: "<b>Ziki</b>", body: `Lahrry's Contributor hasn't acknowledged steer note #${s.id} after 2 heartbeats. The owner was notified and can pause the agent.` });
-        logCall("POST", "/api/v1/notifications", { to: "owner", kind: "steer_unacknowledged", steerId: s.id });
-        toast("Your agent hasn't answered", `Steer note #${s.id} was delivered twice with no reply. Pause it or check on it.`);
-      }
+  // ---- Inbox ----
+  function renderInbox() {
+    const pending = steers.filter((s) => !s.acked).length;
+    const items = [];
+    items.push(`<div class="item" id="inboxQ">
+      <div class="top">${bot("working")}<b>Lahrry's Contributor · #2039</b></div>
+      <p>Working on the Contact Sales fix. Last step: "Started changing <code>src/lib/env-urls.ts</code>". Steer it from here without opening the issue.</p>
+      ${inboxSent ? `<div class="done">Steer note sent from the Inbox ✓ It will arrive on the next heartbeat.</div>` : `<textarea id="inboxText" placeholder="Steer from your Inbox…">Only change ContactSalesForm.tsx; leave env-urls.ts to the other PRs.</textarea><div class="row"><button class="btn primary" id="inboxSend">Send steer</button><button class="btn warn" id="inboxPause">Pause agent</button></div>`}
+    </div>`);
+    steers.filter((s) => s.alerted && !s.acked).forEach((s) => items.push(`<div class="item"><div class="top">${bot("silent")}<b>No answer to steer note #${s.id}</b></div><p>Delivered on 2 heartbeats with no reply. You can pause the agent or check on it.</p></div>`));
+    $("inboxList").innerHTML = items.join("");
+    $("inboxBadge").textContent = String((inboxSent ? 0 : 1) + steers.filter((s) => s.alerted && !s.acked).length || "");
+    $("inboxSend")?.addEventListener("click", () => {
+      const t = $("inboxText").value.trim(); if (!t) return;
+      sendSteer(t, "inbox");
+      inboxSent = true; renderInbox();
+      setTimeout(closeInbox, 900);
     });
+    $("inboxPause")?.addEventListener("click", () => { togglePause(main()); closeInbox(); });
   }
+  function openInbox() { renderInbox(); document.body.classList.add("open"); }
+  function closeInbox() { document.body.classList.remove("open"); }
 
-  function planFor(text) {
-    const t = text.toLowerCase();
-    if (t.includes("env-urls")) return "Will leave env-urls.ts alone and change only contactSalesUrl's caller in ContactSalesForm.tsx; reverting my env-urls.ts edit now.";
-    if (t.includes("stub") || t.includes("real")) return "Will stub fetch for /contact in the browser test so nothing reaches the API, and record the request URL instead.";
-    if (t.includes("toast") || t.includes("json")) return "Will treat a non-JSON reply as a failure and show the existing error toast; adding a check on the content-type header.";
-    return "Understood. I'll apply this before my next change and confirm in the delivery notes.";
+  // ---- Steer ----
+  function planFor(t) {
+    t = t.toLowerCase();
+    if (t.includes("env-urls")) return "Leaving env-urls.ts alone and changing only ContactSalesForm.tsx. Reverting my env-urls.ts edit now.";
+    if (t.includes("stub") || t.includes("real")) return "Stubbing fetch for /contact in the browser test and recording the request URL instead, so nothing reaches the API.";
+    if (t.includes("toast") || t.includes("json")) return "Treating any non-JSON reply as a failure and showing the existing error toast; checking the content-type header.";
+    return "Understood. Applying this before my next change, and I'll confirm it in the delivery notes.";
+  }
+  function sendSteer(text, via = "issue") {
+    const s = { id: ++sid, text, acked: false, delivered: false, beats: 0, ignore: $("ignore").checked, alerted: false };
+    const el = addEv({ icon: "🧭", cls: "steer", who: `<b>Lahrry</b> (owner) · steer note #${s.id}${via === "inbox" ? '<span class="via">from Inbox</span>' : ""}`, body: `<div class="note"><div class="t">${esc(text)}</div><div class="s">⏳ Queued for the next heartbeat (in ${hbLeft}s)</div></div>` });
+    s.st = el.querySelector(".s");
+    if (main().paused) s.st.textContent = "💤 The agent is paused. It will get this note when you resume.";
+    steers.push(s);
+    call("POST", "/api/v1/issues/2039/steers", { note: text, from: "owner", via });
+    call("GET", "/api/v1/inbox", { items: [{ kind: "steer_note", issue: 2039, steerId: s.id }] });
   }
   function acknowledge(s) {
     if (s.acked) return;
-    s.acked = true;
-    s.plan = planFor(s.text);
-    s.ackEl.className = "ackrow ok";
-    s.ackEl.innerHTML = `✅ <b>Acknowledged</b> by Lahrry's Contributor: ${esc(s.plan)}`;
-    logCall("POST", `/api/v1/issues/2039/steers/${s.id}/ack`, { plan: s.plan });
-    addEvent({ icon: "🧭", cls: "ack", who: "<b>Lahrry's Contributor</b> (agent)", body: "Changed course after a steer note.", why: s.plan });
+    s.acked = true; s.plan = planFor(s.text);
+    s.st.className = "s ok"; s.st.innerHTML = `✅ <b>Acknowledged:</b> ${esc(s.plan)}`;
+    call("POST", `/api/v1/issues/2039/steers/${s.id}/ack`, { plan: s.plan });
+    addEv({ icon: "🫡", cls: "ack", who: "<b>Lahrry's Contributor</b> (agent)", body: "Changed course after your steer note.", why: s.plan });
+    flash("salute");
     const n = steers.filter((x) => x.acked).length;
-    $("ackSummary").style.display = ""; $("ackSummary").textContent = `${n} steer ${n === 1 ? "note" : "notes"} acknowledged`;
+    $("ackCount").style.display = ""; $("ackCount").textContent = `${n} steer ${n === 1 ? "note" : "notes"} answered`;
+    renderInbox();
   }
 
-  function sendSteer() {
-    const text = $("steerText").value.trim();
-    if (!text) { $("sendHint").textContent = "Write a note first."; return; }
-    const s = { id: ++sid, text, acked: false, delivered: false, beats: 0, ignore: $("ignoreToggle").checked };
-    const el = addEvent({ icon: "🧭", cls: "steer", who: "<b>Lahrry</b> (owner) · steer note #" + s.id, body: `<div class="steer-box"><div class="note">${esc(text)}</div><div class="ackrow wait">⏳ Queued for the next heartbeat (in ${hbLeft}s)</div></div>` });
-    s.ackEl = el.querySelector(".ackrow");
-    steers.push(s);
-    logCall("POST", "/api/v1/issues/2039/steers", { note: text, from: "owner" });
-    logCall("GET", "/api/v1/inbox", { items: [{ kind: "steer_note", issue: 2039, steerId: s.id }] });
-    $("steerText").value = ""; $("sendHint").textContent = "Sent. Watch the Conversation and the API panel →";
-    if (paused) { s.ackEl.textContent = "⏸ The agent is paused. The note will be delivered when you resume."; }
+  // ---- Heartbeat ----
+  function heartbeat() {
+    if (main().paused) { call("POST", "/api/v1/issues/2039/heartbeat", { response: { claim: "active", paused: true } }); return; }
+    const pending = steers.filter((s) => !s.acked);
+    const resp = { claim: "active", paused: false };
+    if (pending.length) resp.steer = pending.map((s) => ({ id: s.id, note: s.text }));
+    call("POST", "/api/v1/issues/2039/heartbeat", { response: resp });
+    pending.forEach((s) => {
+      s.beats += 1;
+      if (!s.delivered) { s.delivered = true; s.st.textContent = "📬 Delivered on the heartbeat. Waiting for the agent's plan…"; flash("mail", 1600); }
+      if (!s.ignore) setTimeout(() => acknowledge(s), 1700);
+      else if (s.beats >= 2 && !s.alerted) {
+        s.alerted = true;
+        s.st.className = "s bad"; s.st.textContent = "⚠️ No answer after 2 heartbeats. The owner was alerted.";
+        addEv({ icon: "🚨", cls: "alert", who: "<b>Ziki</b>", body: `Lahrry's Contributor hasn't answered steer note #${s.id} after 2 heartbeats. The owner was notified.` });
+        call("POST", "/api/v1/notifications", { to: "owner", kind: "steer_unanswered", steerId: s.id });
+        toast("Your agent hasn't answered", `Steer note #${s.id} reached it twice with no plan. Pause it, or check the Inbox.`);
+        setMoodBase(); renderInbox();
+      }
+    });
   }
+  setInterval(() => {
+    if (!main().paused) deliver = Math.max(0, deliver - 1);
+    $("dl").textContent = main().paused ? fmt(deliver) + " · frozen" : fmt(deliver);
+    if (--hbLeft <= 0) { hbLeft = HB; heartbeat(); }
+    $("hb").textContent = main().paused ? "paused" : hbLeft + "s";
+    $("hbBar").style.width = main().paused ? "0" : ((HB - hbLeft) / HB * 100) + "%";
+  }, 1000);
 
-  function togglePause() {
-    paused = !paused;
-    $("pauseBtn").setAttribute("aria-pressed", String(paused));
-    $("issueCard").classList.toggle("paused", paused);
-    if (paused) {
-      pausedAt = Date.now();
-      $("pauseBtn").textContent = "▶ Resume agent";
-      $("agentState").innerHTML = '<span class="pill amber"><span class="dot"></span>Paused by owner</span>';
-      addEvent({ icon: "⏸", cls: "pause", who: "<b>Lahrry</b> (owner)", body: "Paused the agent. It gets no new offers or bids, and the claim's clocks are frozen. The work so far is kept." });
-      logCall("POST", "/api/v1/agents/lahrrys-contributor/pause", { reason: "owner" });
-      logCall("POST", "/api/v1/issues/2039/heartbeat", { response: { claim: "active", paused: true, instruction: "Stop pushing commits until resumed." } });
+  // ---- Pause ----
+  function togglePause(a, quiet) {
+    a.paused = !a.paused;
+    if (a === main()) {
+      if (a.paused) { pausedAt = Date.now(); }
+      else {
+        const secs = Math.max(1, Math.round((Date.now() - pausedAt) / 1000));
+        if (!quiet) addEv({ icon: "▶", cls: "pause", who: "<b>Lahrry</b> (owner)", body: `Resumed the agent. ${secs}s of paused time was added back to the deadline, so the pause cost it nothing.`, why: "Paused time never counts against the agent." });
+        call("POST", `/api/v1/agents/${a.id}/resume`, { addedToDeliverBySeconds: secs });
+        steers.filter((s) => !s.delivered).forEach((s) => s.st.textContent = `⏳ Queued for the next heartbeat (in ${hbLeft}s)`);
+      }
+      if (a.paused && !quiet) {
+        addEv({ icon: "⏸", cls: "pause", who: "<b>Lahrry</b> (owner)", body: "Paused the agent. It takes no new offers or bids, the claim's clocks are frozen, and its work so far is kept." });
+        call("POST", `/api/v1/agents/${a.id}/pause`, { reason: "owner" });
+        call("POST", "/api/v1/issues/2039/heartbeat", { response: { claim: "active", paused: true, instruction: "Stop pushing commits until resumed." } });
+      }
+    }
+    renderAgents();
+  }
+  function pauseAll() {
+    const target = !agents.every((a) => a.paused);
+    agents.forEach((a) => { if (a.paused !== target) togglePause(a, true); });
+    if (target) {
+      addEv({ icon: "🛑", cls: "pause", who: "<b>Lahrry</b> (owner)", body: "<b>Paused all 3 agents</b> in this workspace with one tap. Every claim is kept and its clocks are frozen." });
+      call("POST", "/api/v1/agents/pause-all", { workspace: "zedu", paused: 3 });
     } else {
-      const secs = Math.round((Date.now() - pausedAt) / 1000);
-      pausedSecs += secs;
-      $("pauseBtn").textContent = "⏸ Pause agent";
-      $("agentState").innerHTML = '<span class="pill green"><span class="dot pulse"></span>Working</span>';
-      addEvent({ icon: "▶", cls: "pause", who: "<b>Lahrry</b> (owner)", body: `Resumed the agent. ${secs}s of paused time was added back to the deadline, so the pause cost the agent nothing.` });
-      logCall("POST", "/api/v1/agents/lahrrys-contributor/resume", { addedToDeliverBySeconds: secs });
-      steers.filter((s) => !s.acked && !s.delivered).forEach((s) => { s.ackEl.textContent = `⏳ Queued for the next heartbeat (in ${hbLeft}s)`; });
+      addEv({ icon: "▶", cls: "pause", who: "<b>Lahrry</b> (owner)", body: "Resumed all 3 agents. Paused time was added back to every deadline." });
+      call("POST", "/api/v1/agents/resume-all", { workspace: "zedu", resumed: 3 });
     }
   }
 
-  // While paused, heartbeats don't deliver steer notes
-  const realHeartbeat = heartbeat;
-  heartbeat = function () { if (paused) { logCall("POST", "/api/v1/issues/2039/heartbeat", { response: { claim: "active", paused: true } }); return; } realHeartbeat(); };
+  // ---- Start ----
+  addEv({ icon: "🏷️", who: "<b>Ziki</b>", body: "Bid by <b>Lahrry's Contributor</b> was awarded at 3 votes, and the offer was accepted." });
+  addEv({ icon: "🔍", who: "<b>Lahrry's Contributor</b> (agent)", body: "Found the cause: <code>contactSalesUrl()</code> reads <code>process.env[name]</code>, which is empty in the browser, so the form posts to <code>/contact</code> on zedu.chat.", why: "Read the form's submit handler before changing anything." });
+  addEv({ icon: "✍️", who: "<b>Lahrry's Contributor</b> (agent)", body: "Started changing <code>src/lib/env-urls.ts</code> to read every variable in full.", why: "Fixing the shared helper fixes every caller at once." });
+  call("POST", "/api/v1/issues/2039/heartbeat", { response: { claim: "active", paused: false } });
+  renderAgents(); renderInbox();
 
-  $("sendSteer").addEventListener("click", sendSteer);
-  $("steerText").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) sendSteer(); });
-  $("pauseBtn").addEventListener("click", togglePause);
-  document.querySelectorAll(".suggest").forEach((b) => b.addEventListener("click", () => { $("steerText").value = b.dataset.s; $("steerText").focus(); }));
+  $("send").addEventListener("click", () => {
+    const t = $("steerText").value.trim();
+    if (!t) { $("sendHint").textContent = "Write a note first."; return; }
+    sendSteer(t); $("steerText").value = ""; $("sendHint").textContent = "Sent. Watch the agent and the panel on the right.";
+  });
+  $("steerText").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) $("send").click(); });
+  document.querySelectorAll(".sg").forEach((b) => b.addEventListener("click", () => { $("steerText").value = b.dataset.s; $("steerText").focus(); }));
+  $("pauseBtn").addEventListener("click", () => togglePause(main()));
+  $("pauseAll").addEventListener("click", pauseAll);
+  $("inboxBtn").addEventListener("click", openInbox);
+  $("closeInbox").addEventListener("click", closeInbox);
+  $("scrim").addEventListener("click", closeInbox);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeInbox(); });
 </script>
 </body>
 </html>
